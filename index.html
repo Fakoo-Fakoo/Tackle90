@@ -1,34 +1,97 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tackle90 - Live Scores</title>
   <style>
-    body { font-family: Arial, sans-serif; background-color: #0a0a0a; color: #fff; margin: 0; }
-    header { background-color: #1a1a1a; padding: 1rem; text-align: center; font-size: 1.5rem; font-weight: bold; }
-    nav { display: flex; justify-content: center; gap: 1rem; background-color: #111; padding: 0.5rem 0; }
-    nav button { background-color: #222; border: none; padding: 0.5rem 1rem; color: white; cursor: pointer; border-radius: 4px; }
-    nav button.active { background-color: #007bff; }
-    #matches { display: flex; flex-direction: column; gap: 1rem; padding: 1rem; }
-    .match-card { background-color: #1e1e1e; padding: 1rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
-    .team { display: flex; align-items: center; gap: 0.5rem; }
-    .team img { width: 24px; height: 24px; }
-    .score { font-size: 1.2rem; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #0a0a0a;
+      color: #fff;
+      margin: 0;
+    }
+    header {
+      background-color: #1a1a1a;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      background-color: #111;
+      padding: 0.5rem 0;
+      flex-wrap: wrap;
+    }
+    nav button {
+      background-color: #222;
+      border: none;
+      padding: 0.5rem 1rem;
+      color: white;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    nav button.active {
+      background-color: #007bff;
+    }
+    #filter-container {
+      text-align: center;
+      padding: 1rem;
+    }
+    select {
+      background-color: #1e1e1e;
+      color: white;
+      padding: 0.5rem;
+      border: none;
+      border-radius: 5px;
+    }
+    #matches {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1rem;
+    }
+    .match-card {
+      background-color: #1e1e1e;
+      padding: 1rem;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .team {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .team img {
+      width: 24px;
+      height: 24px;
+    }
+    .score {
+      font-size: 1.2rem;
+    }
   </style>
 </head>
 <body>
-  <header>Tackle90 - Live Scores</header>
+  <header>Tackle90 - Live Football Scores</header>
   <nav>
     <button onclick="loadMatches('live')" id="btn-live" class="active">Live</button>
-    <button onclick="loadMatches('upcoming')" id="btn-upcoming">Upcoming</button>
-    <button onclick="loadMatches('finished')" id="btn-finished">Finished</button>
-  </nav>
-  <section id="matches"></section>
-
-  <script>
+    <button onclick="loadMatches('today')" id="btn-today">Today</button>
+    <button onclick="loadMatches('tomorrow')" id="btn-tomorrow">Tomorrow</button>
+    <button onclick="loadMatches('yesterday')" id="btn-yesterday">Yesterday</button>
+  </nav>  <div id="filter-container">
+    <label for="leagueSelect">Filter by League:</label>
+    <select id="leagueSelect" onchange="filterByLeague()">
+      <option value="all">All</option>
+    </select>
+  </div>  <section id="matches"></section>  <script>
     const API_KEY = '48c2fc47e82a7248f465f34939dc14af';
     const BASE_URL = 'https://v3.football.api-sports.io/fixtures';
+    let currentMatches = [];
 
     async function fetchMatches(type) {
       let date = new Date();
@@ -36,15 +99,17 @@
       const yesterday = new Date(date.setDate(date.getDate() - 1)).toISOString().split('T')[0];
       const tomorrow = new Date(date.setDate(date.getDate() + 2)).toISOString().split('T')[0];
 
-      let url = BASE_URL + '?date=' + today;
-      if (type === 'upcoming') url = BASE_URL + '?date=' + tomorrow;
-      if (type === 'finished') url = BASE_URL + '?date=' + yesterday;
+      let url = `${BASE_URL}?date=${today}`;
+      if (type === 'tomorrow') url = `${BASE_URL}?date=${tomorrow}`;
+      if (type === 'yesterday') url = `${BASE_URL}?date=${yesterday}`;
 
       const res = await fetch(url, {
         headers: { 'x-apisports-key': API_KEY }
       });
       const data = await res.json();
-      return data.response;
+      currentMatches = data.response;
+      renderMatches(currentMatches);
+      populateLeagueFilter(currentMatches);
     }
 
     function renderMatches(matches) {
@@ -54,16 +119,22 @@
         const home = match.teams.home;
         const away = match.teams.away;
         const goals = match.goals;
+        const league = match.league.name;
+        const time = match.fixture.date.split('T')[1].substring(0,5);
+
         const card = document.createElement('div');
         card.className = 'match-card';
+        card.setAttribute('data-league', league);
+
         card.innerHTML = `
           <div class="team">
             <img src="${home.logo}" alt="${home.name}" /> ${home.name}
           </div>
-          <div class="score">${goals.home} - ${goals.away}</div>
+          <div class="score">${goals.home ?? '-'} - ${goals.away ?? '-'}</div>
           <div class="team">
             ${away.name} <img src="${away.logo}" alt="${away.name}" />
           </div>
+          <div style="width: 100%; text-align: right; font-size: 0.8rem; margin-top: 5px;">${league} - ${time}</div>
         `;
         container.appendChild(card);
       });
@@ -74,13 +145,35 @@
       document.getElementById('btn-' + type).classList.add('active');
     }
 
+    function populateLeagueFilter(matches) {
+      const leagues = new Set(matches.map(m => m.league.name));
+      const select = document.getElementById('leagueSelect');
+      select.innerHTML = '<option value="all">All</option>';
+      leagues.forEach(league => {
+        const option = document.createElement('option');
+        option.value = league;
+        option.textContent = league;
+        select.appendChild(option);
+      });
+    }
+
+    function filterByLeague() {
+      const selected = document.getElementById('leagueSelect').value;
+      const cards = document.querySelectorAll('.match-card');
+      cards.forEach(card => {
+        if (selected === 'all' || card.getAttribute('data-league') === selected) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
     async function loadMatches(type) {
       updateActiveButton(type);
-      const matches = await fetchMatches(type);
-      renderMatches(matches);
+      await fetchMatches(type);
     }
 
     loadMatches('live');
-  </script>
-</body>
+  </script></body>
 </html>
